@@ -255,3 +255,27 @@ func (s *Server) Deletetodo(w http.ResponseWriter, r *http.Request) {
 	}, http.StatusUnauthorized)
 
 }
+func (s *Server) Gettodo(w http.ResponseWriter, r *http.Request) {
+	id, err := ExtractTokenID(r)
+	if err != nil {
+		JSONWriter(w, data{
+			"Error": "Opps! Unauthorized",
+		}, http.StatusUnauthorized)
+		return
+	}
+	var td Todo
+	todos, err := td.Getalltodo(s.DB, id)
+	if err != nil {
+		JSONWriter(w, data{
+			"Error": "Internal Error",
+		}, http.StatusInternalServerError)
+		return
+	}
+	if len(*todos) == 0 {
+		JSONWriter(w, data{
+			"Error": "No Todos Yet!",
+		}, http.StatusNotFound)
+		return
+	}
+	JSONWriter(w, *todos, 200)
+}
