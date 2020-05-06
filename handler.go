@@ -23,6 +23,11 @@ func JSONWriter(w http.ResponseWriter, data interface{}, statusCode int) {
 	}
 	return
 }
+func Cors(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "*")
+}
 
 // Starting Middlewares
 
@@ -55,6 +60,7 @@ func (s *Server) Home(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) Signup(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		JSONWriter(w, data{
@@ -100,6 +106,7 @@ func (s *Server) Signup(w http.ResponseWriter, r *http.Request) {
 
 }
 func (s *Server) Signin(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		JSONWriter(w, data{
@@ -142,10 +149,12 @@ func (s *Server) Signin(w http.ResponseWriter, r *http.Request) {
 			}, http.StatusInternalServerError)
 		} else {
 			JSONWriter(w, data{
-				"name":     getuser.Name,
-				"id":       getuser.ID,
-				"username": getuser.Username,
-				"token":    token,
+				"token": token,
+				"user": &User{
+					Name:     getuser.Name,
+					ID:       getuser.ID,
+					Username: getuser.Username,
+				},
 			}, http.StatusAccepted)
 		}
 
@@ -154,6 +163,7 @@ func (s *Server) Signin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) Addtodo(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		JSONWriter(w, data{
@@ -200,6 +210,7 @@ func (s *Server) Addtodo(w http.ResponseWriter, r *http.Request) {
 
 }
 func (s *Server) Deletetodo(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	vars := mux.Vars(r)
 	tid64, err := strconv.ParseUint(vars["id"], 10, 32)
 	if err != nil {
@@ -256,6 +267,7 @@ func (s *Server) Deletetodo(w http.ResponseWriter, r *http.Request) {
 
 }
 func (s *Server) Gettodo(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	id, err := ExtractTokenID(r)
 	if err != nil {
 		JSONWriter(w, data{
