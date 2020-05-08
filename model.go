@@ -115,3 +115,26 @@ func (td *Todo) DeleteTodo(db *gorm.DB, id uint32) (int64, error) {
 	}
 	return db.RowsAffected, nil
 }
+func (td *Todo) UpdateCompleted(db *gorm.DB, value bool) (*Todo, error) {
+	db = db.Debug().Model(&td).UpdateColumn("completed", value)
+	if db.Error != nil {
+		return &Todo{}, db.Error
+	}
+	err := db.Debug().Model(&Todo{}).Where("id = ?", td.ID).Take(&td).Error
+	if err != nil {
+		return &Todo{}, err
+	}
+	return td, nil
+}
+func (td *Todo) Update(db *gorm.DB, body string) (*Todo, error) {
+	var err error
+	err = db.Debug().Model(&Todo{}).Where("id = ?", td.ID).Updates(Todo{Body: body}).Error
+	if db.Error != nil {
+		return &Todo{}, db.Error
+	}
+	err = db.Debug().Model(&Todo{}).Where("id = ?", td.ID).Take(&td).Error
+	if err != nil {
+		return &Todo{}, err
+	}
+	return td, nil
+}

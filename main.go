@@ -36,6 +36,6 @@ func main() {
 	server := Server{}
 	server.Initialize()
 	fmt.Println("Server Starting on Port 8000")
-	log.Fatal(http.ListenAndServe(":8000", server.Router))
+	log.Fatal(http.ListenAndServe(":8081", server.Router))
 
 }

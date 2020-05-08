@@ -291,3 +291,104 @@ func (s *Server) Gettodo(w http.ResponseWriter, r *http.Request) {
 	}
 	JSONWriter(w, *todos, 200)
 }
+
+func (s *Server) Marktodo(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	tid64, err := strconv.ParseUint(vars["id"], 10, 32)
+	if err != nil {
+		JSONWriter(w, data{
+			"Error": err.Error(),
+		}, http.StatusUnprocessableEntity)
+		return
+	}
+	tid32 := uint32(tid64)
+	id, err := ExtractTokenID(r)
+	if err != nil {
+		JSONWriter(w, data{
+			"Error": "Opps! Unauthorized",
+		}, http.StatusUnauthorized)
+		return
+	}
+	var td Todo
+	todo, err := td.GetTodoByID(s.DB, tid32)
+	if err != nil {
+		JSONWriter(w, data{
+			"Error": "No Todo Found",
+		}, http.StatusNotFound)
+		return
+	}
+	if todo.UserID != id {
+		JSONWriter(w, data{
+			"Error": "Opps! Unauthorized",
+		}, http.StatusUnauthorized)
+		return
+	}
+	if !todo.Completed {
+		todo, err = todo.UpdateCompleted(s.DB, true)
+		if err != nil {
+			JSONWriter(w, data{
+				"Error": "Internal Error",
+			}, http.StatusInternalServerError)
+			return
+		}
+		JSONWriter(w, todo, 200)
+		return
+	}
+	todo, err = todo.UpdateCompleted(s.DB, false)
+	if err != nil {
+		JSONWriter(w, data{
+			"Error": "Internal Error",
+		}, http.StatusInternalServerError)
+		return
+	}
+	JSONWriter(w, todo, 200)
+
+}
+
+func (s *Server) EditTodo(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		JSONWriter(w, data{
+			"Error": "Request Unprocessable",
+		}, http.StatusUnprocessableEntity)
+		return
+	}
+	requestTODO := Todo{}
+	err = json.Unmarshal(body, &requestTODO)
+	if err != nil {
+		JSONWriter(w, data{
+			"Error": "No Json Found on Request",
+		}, http.StatusUnprocessableEntity)
+		return
+	}
+	if requestTODO.ID == 0 || requestTODO.Body == "" {
+		JSONWriter(w, data{
+			"Error": "Fields Can't be empty",
+		}, http.StatusUnprocessableEntity)
+		return
+	}
+
+	todo, err := requestTODO.GetTodoByID(s.DB, requestTODO.ID)
+	if err != nil {
+		JSONWriter(w, data{
+			"Error": "No Todo Found",
+		}, http.StatusNotFound)
+		return
+	}
+	id, err := ExtractTokenID(r)
+	if todo.UserID != id {
+		JSONWriter(w, data{
+			"Error": "Opps! Unauthorized",
+		}, http.StatusUnauthorized)
+		return
+	}
+	todo, err = todo.Update(s.DB, requestTODO.Body)
+	if err != nil {
+		JSONWriter(w, data{
+			"Error": err.Error(),
+		}, http.StatusInternalServerError)
+		return
+	}
+	JSONWriter(w, todo, 200)
+}
