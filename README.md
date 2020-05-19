@@ -1,7 +1,5 @@
-# Todo Api
-## A Traditional Multiuser Todo Api With Golang
-
-A Basic Todo Api made With Awesome Golang, Postgresql.
+# Todo REST api
+### A Traditional Multiuser Todo RESTFul Api With Golang and Postgresql
 > Note: I have done this project for learning purpose only.
 ## Currently Working Features
 * Signup
