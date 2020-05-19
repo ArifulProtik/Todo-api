@@ -38,7 +38,7 @@ func JSONandCORS(next http.HandlerFunc) http.HandlerFunc {
 		next(w, r)
 	}
 }
-func IsAuth(next http.HandlerFunc) http.HandlerFunc {
+func (s *Server) IsAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := TokenValid(r)
 		if err != nil {
@@ -47,6 +47,26 @@ func IsAuth(next http.HandlerFunc) http.HandlerFunc {
 			}, http.StatusUnauthorized)
 			return
 		}
+		id, err := ExtractTokenID(r)
+		if err != nil {
+			JSONWriter(w, data{
+				"Error": "Opps! Unauthorized",
+			}, http.StatusUnauthorized)
+			return
+		}
+		getUser, err := FindUserByID(s.DB, id)
+		if err != nil {
+			log.Println(err)
+			JSONWriter(w, data{
+				"Error": "Internal Error",
+			}, http.StatusUnauthorized)
+			return
+		}
+		if getUser.IsActive != true {
+			JSONWriter(w, data{"Error": "Email is Not Verified"}, http.StatusForbidden)
+			return
+		}
+
 		next(w, r)
 	}
 }
@@ -57,109 +77,6 @@ func (s *Server) Home(w http.ResponseWriter, r *http.Request) {
 	JSONWriter(w, data{
 		"Messege": "Welcome To Todo",
 	}, 200)
-}
-
-func (s *Server) Signup(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		JSONWriter(w, data{
-			"Error": "Request Unprocessable",
-		}, http.StatusUnprocessableEntity)
-		return
-	}
-	user := User{}
-	err = json.Unmarshal(body, &user)
-	if err != nil {
-		JSONWriter(w, data{
-			"Error": "No Json Found on Request",
-		}, http.StatusUnprocessableEntity)
-		return
-	}
-	user.Prepare()
-	if user.Name == "" || user.Username == "" || user.Password == "" {
-		JSONWriter(w, data{
-			"Error": "Fields Can't be empty",
-		}, http.StatusUnprocessableEntity)
-		return
-	}
-	err = user.HashBeforeSave()
-	if err != nil {
-		JSONWriter(w, data{
-			"Error": "Internal Error",
-		}, http.StatusInternalServerError)
-		return
-	}
-	createduser, err := user.SaveUser(s.DB)
-	if err != nil {
-		JSONWriter(w, data{
-			"Error": "Username Already Exists",
-		}, http.StatusConflict)
-		return
-	} else {
-		JSONWriter(w, data{
-			"name":     createduser.Name,
-			"username": createduser.Username,
-		}, http.StatusCreated)
-		return
-	}
-
-}
-func (s *Server) Signin(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		JSONWriter(w, data{
-			"Error": "Request Unprocessable",
-		}, http.StatusUnprocessableEntity)
-		return
-	}
-	user := User{}
-	err = json.Unmarshal(body, &user)
-	if err != nil {
-		JSONWriter(w, data{
-			"Error": "No Json Found on Request",
-		}, http.StatusUnprocessableEntity)
-		return
-	}
-	if user.Username == "" || user.Password == "" {
-		JSONWriter(w, data{
-			"Error": "Fields Can't be empty",
-		}, http.StatusUnprocessableEntity)
-		return
-	}
-	getuser, err := FindUserByname(s.DB, user.Username)
-	if err != nil {
-		JSONWriter(w, data{
-			"Error": "No user found by username " + user.Username,
-		}, http.StatusNotFound)
-		return
-	}
-	err = VerifyPassword(getuser.Password, user.Password)
-	if err != nil {
-		JSONWriter(w, data{
-			"Error": "Password incorrect",
-		}, http.StatusNotFound)
-		return
-	} else {
-		token, err := CreateToken(getuser.ID)
-		if err != nil {
-			JSONWriter(w, data{
-				"Error": "Internal Error",
-			}, http.StatusInternalServerError)
-		} else {
-			JSONWriter(w, data{
-				"token": token,
-				"user": &User{
-					Name:     getuser.Name,
-					ID:       getuser.ID,
-					Username: getuser.Username,
-				},
-			}, http.StatusAccepted)
-		}
-
-	}
-
 }
 
 func (s *Server) Addtodo(w http.ResponseWriter, r *http.Request) {

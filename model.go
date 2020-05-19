@@ -2,20 +2,21 @@ package main
 
 import (
 	"errors"
+	"github.com/jinzhu/gorm"
+	"golang.org/x/crypto/bcrypt"
 	"html"
 	"log"
 	"time"
-
-	"github.com/jinzhu/gorm"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type User struct {
 	Name      string    `gorm:"size:255" json:"name"`
-	Username  string    `gorm:"size:255; unique" json:"username"`
+	Email     string    `gorm:"size:255; unique" json:"email"`
 	Password  string    `gorm:"size:255" json:"password"`
 	ID        uint32    `gorm:"primary_key;auto_increment:true" json:"id"`
 	CreatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"created_at"`
+	IsActive  bool      `gorm:"default:false" json:"isactive"`
+	Avatar    string    `gorm:"default:'https://www.pinclipart.com/picdir/middle/287-2871700_avatar-placeholder-clipart.png'" json:"avater"`
 }
 type Todo struct {
 	Body      string `gorm:"size:255" json:"body"`
@@ -29,8 +30,7 @@ func Hash(password string) ([]byte, error) {
 }
 
 func VerifyPassword(hashedPassword, password string) error {
-	log.Println(hashedPassword)
-	log.Println(password)
+
 	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 }
 func (u *User) HashBeforeSave() error {
@@ -55,21 +55,22 @@ func (u *User) SaveUser(db *gorm.DB) (*User, error) {
 	}
 	return u, nil
 }
-func (u *User) FindUserByID(db *gorm.DB, uid uint32) (*User, error) {
+func FindUserByID(db *gorm.DB, uid uint32) (User, error) {
 	var err error
+	var u User
 	err = db.Debug().Model(User{}).Where("id = ?", uid).Take(&u).Error
 	if err != nil {
-		return &User{}, err
+		return User{}, err
 	}
 	if gorm.IsRecordNotFoundError(err) {
-		return &User{}, errors.New("User Not Found")
+		return User{}, errors.New("User Not Found")
 	}
 	return u, err
 }
-func FindUserByname(db *gorm.DB, name string) (User, error) {
+func FindUserByEmail(db *gorm.DB, email string) (User, error) {
 	var err error
 	usr := User{}
-	err = db.Debug().Model(User{}).Where("username = ?", name).Take(&usr).Error
+	err = db.Debug().Model(User{}).Where("email = ?", email).Take(&usr).Error
 	if err != nil {
 		return User{}, err
 	}
@@ -77,6 +78,32 @@ func FindUserByname(db *gorm.DB, name string) (User, error) {
 		return User{}, errors.New("User no found by this username")
 	}
 	return usr, nil
+}
+func ResetPass(db *gorm.DB, id uint32, password string) error {
+	usr := User{}
+	err := db.Debug().Model(User{}).Where("id = ?", id).Update("password", password).Take(&usr).Error
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func UpdateUser(db *gorm.DB, user User, id uint32) error {
+	usr := User{}
+	log.Println()
+	err := db.Debug().Model(User{}).Where("id = ?", id).Updates(user).Take(&usr).Error
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func UpdateMultiple(db *gorm.DB, user *User, id uint32) error {
+	usr := User{}
+
+	err := db.Debug().Model(User{}).Where("id = ?", id).Updates(map[string]interface{}{"email": user.Email, "is_active": false}).Take(&usr).Error
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (td *Todo) Prepare() {

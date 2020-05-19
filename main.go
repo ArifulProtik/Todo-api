@@ -28,6 +28,7 @@ func (s *Server) Initialize() {
 	s.DB.Debug().AutoMigrate(
 		User{},
 		Todo{},
+		Verification{},
 	)
 	s.Router = mux.NewRouter()
 	s.InitRoute()
@@ -35,7 +36,7 @@ func (s *Server) Initialize() {
 func main() {
 	server := Server{}
 	server.Initialize()
-	fmt.Println("Server Starting on Port 8000")
+	fmt.Println("Server Starting on Port 8081")
 	log.Fatal(http.ListenAndServe(":8081", server.Router))
 
 }
